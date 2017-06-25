@@ -1,0 +1,200 @@
+<html>
+    <head>
+        <script>
+            window.onload = function () {
+                cvs = document.getElementById("gc");
+                ctx = cvs.getContext("2d");
+                brickRows = 5;
+                brix = [];
+                isGameOver = false;
+                gameWon = false;
+
+                initializeValues();
+                initializeScreen();
+
+                document.addEventListener("keydown", keyPush);
+                document.addEventListener("keyup", keyUp);
+
+                game = setInterval(render, 1000/30);
+            }
+
+            function render () {
+                ctx.fillStyle = "black";
+                ctx.fillRect(0, 0, cvs.width, cvs.height);
+
+                //update ball vertical position before detecting collision on bricks.
+                ballY += (yDirCoef * 10);
+                detectBrickCollisionAndRender();
+                checkWinCondition();
+                updatePaddlePosition();
+
+                //Update horizontal position before border and paddle collision detection.
+                ballX += xSpeed * (xDirCoef);
+                detectBorderCollision();
+                detectPaddleCollisionAndLossCondition();
+
+                //Draw ball and paddle.
+                ctx.fillStyle = "white";
+                ctx.fillRect(paddleX, paddleY, paddleWidth, paddleHeight);
+                ctx.fillRect(ballX, ballY, ballSize, ballSize);
+            }
+
+            function initializeValues() {
+                pxlBorder = 2;
+                brickWidth = 70;
+                brickHeight = 23;
+                paddleWidth = 80;
+                paddleHeight = 15;
+                ballSize = 10;
+                ballX = Math.floor(cvs.width/2) - Math.floor(ballSize/2);
+                ballY = cvs.height - (paddleHeight + (pxlBorder * 2) + ballSize);
+                momentum = 0;
+                momentumCoefficient = 1;
+                momentumMax = 3;
+                isMovingLeft = false;
+                isMovingRight = false;
+                xDirCoef = -1;
+                yDirCoef = 1;
+                xSpeedMax = 15;
+                xSpeed = 10;
+                paddleX = Math.floor(cvs.width/2) - Math.floor(paddleWidth/2);
+                paddleY = cvs.height - (paddleHeight + pxlBorder);
+            }
+
+            function initializeScreen() {
+                initializeValues();
+                while (brix.length > 0) {
+                    brix.shift();
+                }
+                for (var j = 0; j < brickRows; j ++) {
+                    for(var i = 0; i < cvs.width/brickWidth; i++) {
+                        brix.push({ x: (i * brickWidth), y: (j * brickHeight) });
+                    }
+                }
+                paddleX = Math.floor(cvs.width/2) - Math.floor(paddleWidth/2);
+                ballX = Math.floor(cvs.width/2) - Math.floor(ballSize/2);
+                ballY = cvs.height - (paddleHeight + (pxlBorder * 2) + ballSize);
+
+            }
+
+            function detectBrickCollisionAndRender() {
+                ctx.fillStyle = "red";
+                for(i in brix) {
+                    let brick = brix[i];
+                    if (brick.x != -1) {
+                        if ((ballX + (ballSize/2)) <= (brick.x + brickWidth) 
+                        && ((ballX + (ballSize/2)) >= brick.x)
+                        && (ballY <= (brick.y + brickHeight))) {
+                            brick.x = -1;
+                            yDirCoef *= -1;
+                            continue;
+                        }
+                        ctx.fillRect(brick.x, brick.y, brickWidth - pxlBorder, brickHeight - pxlBorder);
+                    }
+                }
+            }
+
+            function checkWinCondition() {
+                gameWon = true;
+                for(i in brix) {
+                    let brick = brix[i];
+                    if (brick.x != -1) {
+                        gameWon = false;
+                        break;
+                    }
+                }
+                if (gameWon) {
+                    brickRows++;
+                    isGameOver = true;
+                    clearInterval(game);
+                    initializeScreen();
+                    render();
+                }
+            }
+
+            function updatePaddlePosition() {
+                if (isMovingLeft) {
+                    momentum--;
+                    paddleX = paddleX - 10 < 0 ? pxlBorder : paddleX - 10;
+                } else if (isMovingRight) {
+                    momentum++;
+                    paddleX = paddleX + paddleWidth + 10 > cvs.width ? cvs.width - paddleWidth - pxlBorder : paddleX + 10;
+                } else {
+                    momentum = 0;
+                }
+            }
+
+            function detectBorderCollision() {
+                if (((ballX + ballSize + xSpeed) > cvs.width) || ((ballX + xSpeed) < 0)) {
+                    xDirCoef *= -1;
+                }
+            }
+
+            function detectPaddleCollisionAndLossCondition() {
+                if ((ballY + ballSize) > (cvs.height - (pxlBorder + paddleHeight))) {
+                    if ((ballX <= (paddleX + paddleWidth) && ballX >= paddleX)
+                    || (((ballX + ballSize) >= paddleX) && ((ballX + ballSize) <= (paddleX + paddleWidth)))) {
+                        yDirCoef *= -1;
+                        if (Math.abs(xSpeed + momentum) > xSpeedMax) {
+                            xSpeed = xSpeedMax;
+                        } else {
+                            xSpeed = momentumCoefficient == xDirCoef ? xSpeed + momentum : xSpeed - momentum;
+                        }
+                    } else {
+                        isGameOver = true;
+                        brickRows = 5;
+                        clearInterval(game);
+                        initializeScreen();
+                        render();
+                    }
+                }
+            }
+
+            function keyPush(evt) {
+                if (isGameOver) {
+                    isGameOver = false;
+                    game = setInterval(render, 1000/30);
+                }
+                switch(evt.keyCode) {
+                    case 65:
+                    case 37:
+                    //left arrow
+                        if (momentumCoefficient > 0) {
+                            momentumCoefficient = -1;
+                            momentum = 0;
+                        }
+                        isMovingLeft = true;
+                        isMovingRight = false;
+                        break;
+                    case 68:
+                    case 39:
+                    //right arrow
+                        if(momentumCoefficient < 0) {
+                            momentumCoefficient = 1;
+                            momentum = 0;
+                        }
+                        isMovingRight = true;
+                        isMovingLeft = false;
+                        break;
+                }
+            }
+
+            function keyUp(evt) {
+                momentum = 0;
+                switch(evt.keyCode) {
+                    case 65:
+                    case 37:
+                        isMovingLeft = false;
+                        break;
+                    case 68:
+                    case 39:
+                        isMovingRight = false;
+                        break;
+                }
+            }
+        </script>
+    </head>
+    <body>
+        <canvas id="gc" height="500" width="700"></canvas>
+    </body> 
+</html>
