@@ -76,6 +76,12 @@
                 ballY = cvs.height - (paddleHeight + (pxlBorder * 2) + ballSize);
 
             }
+            
+            function detectCeilingCollision() {
+                if (ballY < 0) {
+                    yDirCoef = -1;
+                }
+            }
 
             function detectBrickCollisionAndRender() {
                 ctx.fillStyle = "red";
