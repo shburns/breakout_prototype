@@ -24,6 +24,7 @@
 
                 //update ball vertical position before detecting collision on bricks.
                 ballY += (yDirCoef * 10);
+                detectCeilingCollision();
                 detectBrickCollisionAndRender();
                 checkWinCondition();
                 updatePaddlePosition();
